@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\RSoc.Client\RSoc.Client.csproj" />
+    <ProjectReference Include="..\..\src\RSoc.Protocol\RSoc.Protocol.csproj" />
+  </ItemGroup>
+
+  <!-- Copia el núcleo nativo (DXGI/WIC/input) junto al ejecutable para el P/Invoke. -->
+  <ItemGroup>
+    <None Include="..\RSocClientCore\bin\RSocClientCore.dll"
+          Condition="Exists('..\RSocClientCore\bin\RSocClientCore.dll')">
+      <Link>RSocClientCore.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="rsoc-client-conf.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>rsoc.ico</ApplicationIcon>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\RSoc.Protocol\RSoc.Protocol.csproj" />
+    <ProjectReference Include="..\..\client-windows\RSoc.Client\RSoc.Client.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- FileProvider para entregar el APK descargado al instalador del sistema (API 24+). -->
+    <PackageReference Include="Xamarin.AndroidX.Core" Version="1.17.0" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationId>com.socratic.rsoc</ApplicationId>
+    <ApplicationVersion>26061802</ApplicationVersion>
+    <ApplicationDisplayVersion>2026.06.18.2</ApplicationDisplayVersion>
+    <!--
+      Enables trim analyzers and full trimming during Release mode.
+      To learn more, see: https://learn.microsoft.com/dotnet/core/deploying/trimming/trimming-options#trimming-granularity
+    -->
+    <TrimMode>full</TrimMode>
+  </PropertyGroup>
+</Project>
+

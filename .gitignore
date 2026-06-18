@@ -1,0 +1,48 @@
+# --- Compilación .NET ---
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+
+# --- Compilación nativa (MSVC) ---
+*.obj
+*.exe
+*.dll
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# --- Salidas de empaquetado/despliegue ---
+build/
+dist/
+updates/
+*.apk
+*.aab
+*.keystore
+
+# --- Logs en runtime ---
+logs/
+*.log
+
+# --- Certificados autofirmados generados en runtime ---
+*.pfx
+
+# --- Android intermedios ---
+*.class
+.gradle/
+
+# --- Varios IDE/SO ---
+.vs/
+.idea/
+.vscode/
+*.DotSettings.user
+Thumbs.db
+.DS_Store
+
+# --- Config local con secretos (no subir credenciales reales) ---
+# Las plantillas SÍ se versionan (rsoc-server-config.json, rsoc-client-conf.json);
+# si guardas copias con secretos reales, renómbralas *.local.json
+*.local.json

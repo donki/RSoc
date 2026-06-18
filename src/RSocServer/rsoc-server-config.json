@@ -1,0 +1,27 @@
+{
+  "_comment": "Configuración de RSocServer. IPs, puertos y credenciales del API y del relay.",
+
+  "Api": {
+    "User": "admin",
+    "Password": "admin"
+  },
+
+  "Relay": {
+    "_comment": "Host/puerto del relay que se entrega a los clientes. En despliegue real, Host = IP pública o DNS del servidor alcanzable por los clientes (no una IP de LAN privada).",
+    "Host": "127.0.0.1",
+    "Port": 21117
+  },
+
+  "Server": {
+    "ApiHost": "0.0.0.0",
+    "ApiPort": 21114,
+    "PeerTimeoutSecs": 300
+  },
+
+  "Update": {
+    "_comment": "Autoactualización del cliente. El servidor hospeda updates/windows y updates/android. MaxConcurrentDownloads limita el rollout para no saturar (no se actualizan todos a la vez).",
+    "Enabled": true,
+    "MaxConcurrentDownloads": 3,
+    "RetryAfterSeconds": 30
+  }
+}
