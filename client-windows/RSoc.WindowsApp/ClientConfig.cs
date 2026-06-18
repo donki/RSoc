@@ -10,11 +10,11 @@ namespace RSoc.WindowsApp;
 public sealed class ClientConfig
 {
     public string Server { get; set; } = "https://127.0.0.1:21114";
-    public string ApiUser { get; set; } = "admin";
-    public string ApiPassword { get; set; } = "admin";
+    public string ApiUser { get; set; } = "";
+    public string ApiPassword { get; set; } = "";
     public string DeviceId { get; set; } = "";
     public string Alias { get; set; } = "";
-    public string ConnectionPassword { get; set; } = "Remoto2024!";
+    public string ConnectionPassword { get; set; } = "";
 
     /// <summary>
     /// Dirección del relay que usa ESTE equipo cuando actúa de agente (controlado), por si la

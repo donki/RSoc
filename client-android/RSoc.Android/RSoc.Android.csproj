@@ -14,8 +14,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationId>com.socratic.rsoc</ApplicationId>
-    <ApplicationVersion>26061802</ApplicationVersion>
-    <ApplicationDisplayVersion>2026.06.18.2</ApplicationDisplayVersion>
+    <ApplicationVersion>26061803</ApplicationVersion>
+    <ApplicationDisplayVersion>2026.06.18.3</ApplicationDisplayVersion>
     <!--
       Enables trim analyzers and full trimming during Release mode.
       To learn more, see: https://learn.microsoft.com/dotnet/core/deploying/trimming/trimming-options#trimming-granularity
@@ -23,4 +23,5 @@
     <TrimMode>full</TrimMode>
   </PropertyGroup>
 </Project>
+
 
