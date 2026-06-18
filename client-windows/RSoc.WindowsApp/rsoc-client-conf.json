@@ -1,0 +1,19 @@
+{
+  "_comment": "Configuración del cliente RSoc. Cambia Server por https://IP:puerto del servidor para conectar PC↔PC (la API es siempre HTTPS).",
+
+  "Server": "https://127.0.0.1:21114",
+
+  "ApiUser": "admin",
+  "ApiPassword": "admin",
+
+  "ConnectionPassword": "Remoto2024!",
+
+  "_comment_certs": "Aceptar certificados autofirmados (true por defecto). Ponlo en false solo con certificados de una CA de confianza.",
+  "AcceptSelfSignedCerts": true,
+
+  "RelayHost": "127.0.0.1",
+  "RelayPort": 21117,
+
+  "DeviceId": "",
+  "Alias": ""
+}

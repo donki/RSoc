@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/client-windows/">
+    <Project Path="client-windows/RSoc.Client/RSoc.Client.csproj" />
+    <Project Path="client-windows/RSoc.WindowsApp/RSoc.WindowsApp.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/RSoc.Protocol/RSoc.Protocol.csproj" />
+    <Project Path="src/RSocServer/RSocServer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RSoc.Tests/RSoc.Tests.csproj" />
+  </Folder>
+</Solution>
