@@ -8,9 +8,9 @@ internal sealed class AndroidConfig
     private const string Prefs = "rsoc";
 
     public string Server { get; set; } = "https://10.0.2.2:21114";
-    public string ApiUser { get; set; } = "admin";
-    public string ApiPassword { get; set; } = "admin";
-    public string ConnectionPassword { get; set; } = "Remoto2024!";
+    public string ApiUser { get; set; } = "";
+    public string ApiPassword { get; set; } = "";
+    public string ConnectionPassword { get; set; } = "";
 
     /// <summary>Aceptar certificados TLS autofirmados (true por defecto). Ponlo en false con CA de confianza.</summary>
     public bool AcceptSelfSignedCerts { get; set; } = true;
@@ -21,9 +21,9 @@ internal sealed class AndroidConfig
         return new AndroidConfig
         {
             Server = p.GetString("server", "https://10.0.2.2:21114")!,
-            ApiUser = p.GetString("user", "admin")!,
-            ApiPassword = p.GetString("pass", "admin")!,
-            ConnectionPassword = p.GetString("conn", "Remoto2024!")!,
+            ApiUser = p.GetString("user", "")!,
+            ApiPassword = p.GetString("pass", "")!,
+            ConnectionPassword = p.GetString("conn", "")!,
             AcceptSelfSignedCerts = p.GetBoolean("acceptSelfSigned", true),
         };
     }

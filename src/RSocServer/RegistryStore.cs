@@ -34,8 +34,10 @@ public sealed class RegistryStore(TimeProvider clock, IConfiguration config)
 
     public string? Login(LoginRequest req)
     {
-        var user = config["Api:User"] ?? "admin";
-        var pass = config["Api:Password"] ?? "admin";
+        var user = config["Api:User"];
+        var pass = config["Api:Password"];
+        // Sin credenciales configuradas no se permite ningún login (no hay usuario/clave por defecto).
+        if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass)) return null;
         if (req.User != user || req.Password != pass) return null;
 
         var token = RandomToken(24);

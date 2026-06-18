@@ -56,6 +56,10 @@ $apk = Get-ChildItem (Join-Path $repo "client-android\RSoc.Android\bin\Debug\net
        Select-Object -First 1
 if ($apk) { Copy-Item $apk.FullName (Join-Path $andr "RSoc.apk") -Force }
 
+Write-Host "== Datos por defecto en la config distribuida (no en el repo) ==" -ForegroundColor Cyan
+& (Join-Path $PSScriptRoot "set-build-defaults.ps1") `
+    -ServerBase (Join-Path $srv "RSocServer") -ClientDir $cli
+
 Write-Host "== Empaquetando artefactos de autoactualización (updates\) ==" -ForegroundColor Cyan
 # Se colocan dentro del RSocServer publicado para que el servidor los hospede y viajen con él.
 & (Join-Path $PSScriptRoot "pack-updates.ps1") `

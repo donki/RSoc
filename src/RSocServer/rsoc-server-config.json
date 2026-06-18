@@ -2,8 +2,9 @@
   "_comment": "Configuración de RSocServer. IPs, puertos y credenciales del API y del relay.",
 
   "Api": {
-    "User": "admin",
-    "Password": "admin"
+    "_comment": "Credenciales del API de gestión. SIN valores por defecto: define User y Password antes de usar (con ambos vacíos no se permite ningún login).",
+    "User": "",
+    "Password": ""
   },
 
   "Relay": {

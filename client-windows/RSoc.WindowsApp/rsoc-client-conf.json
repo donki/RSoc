@@ -1,12 +1,12 @@
 {
-  "_comment": "Configuración del cliente RSoc. Cambia Server por https://IP:puerto del servidor para conectar PC↔PC (la API es siempre HTTPS).",
+  "_comment": "Configuración del cliente RSoc. Cambia Server por https://IP:puerto del servidor (la API es siempre HTTPS). Rellena las credenciales: no hay valores por defecto.",
 
   "Server": "https://127.0.0.1:21114",
 
-  "ApiUser": "admin",
-  "ApiPassword": "admin",
+  "ApiUser": "",
+  "ApiPassword": "",
 
-  "ConnectionPassword": "Remoto2024!",
+  "ConnectionPassword": "",
 
   "_comment_certs": "Aceptar certificados autofirmados (true por defecto). Ponlo en false solo con certificados de una CA de confianza.",
   "AcceptSelfSignedCerts": true,

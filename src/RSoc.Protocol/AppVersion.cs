@@ -9,7 +9,7 @@ namespace RSoc.Protocol;
 public static class AppVersion
 {
     /// <summary>Versión de ESTE build (semántica MAJOR.MINOR.PATCH[.BUILD]).</summary>
-    public const string Current = "2026.06.18.2";
+    public const string Current = "2026.06.18.3";
 
     /// <summary>
     /// Compara dos versiones tipo "1.2.3". Devuelve &gt;0 si <paramref name="a"/> es más nueva que
@@ -40,5 +40,6 @@ public static class AppVersion
         return v;
     }
 }
+
 
 
