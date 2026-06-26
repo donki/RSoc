@@ -172,7 +172,7 @@ Ver [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) para el detalle.
 
 ## Documentación
 
-[ESPECIFICACION-RSoc.md](ESPECIFICACION-RSoc.md) · [PROYECTO-acceso-remoto.md](PROYECTO-acceso-remoto.md) · [FEATURES.md](FEATURES.md) · [CI-CD.md](CI-CD.md)
+[ESPECIFICACION-RSoc.md](ESPECIFICACION-RSoc.md) · [PROYECTO-acceso-remoto.md](PROYECTO-acceso-remoto.md) · [FEATURES.md](FEATURES.md) · [CI-CD.md](CI-CD.md) · [CHANGELOG.md](CHANGELOG.md) · [Constitución](constitution/constitucion.md)
 
 ## Créditos
 
