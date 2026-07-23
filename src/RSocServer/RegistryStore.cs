@@ -18,11 +18,17 @@ public sealed class RegistryStore(TimeProvider clock, IConfiguration config)
         string Alias,
         string ConnectionPasswordHash,
         string PublicKey,
+        string Group,
+        string Kind,
+        string Address,
         DateTimeOffset LastSeen);
 
     private readonly ConcurrentDictionary<string, DeviceRecord> _devices = new();
     private readonly ConcurrentDictionary<string, SessionTicket> _pendingByDevice = new();
     private readonly ConcurrentDictionary<string, byte> _apiTokens = new();
+    // Grupos reasignados por un gestor. Tienen prioridad sobre el grupo que el equipo declara al
+    // registrarse, y sobreviven a los re-registros (el equipo no puede "recuperar" su grupo solo).
+    private readonly ConcurrentDictionary<string, string> _groupOverride = new();
 
     public TimeSpan PeerTimeout { get; } =
         TimeSpan.FromSeconds(config.GetValue("Server:PeerTimeoutSecs", 300));
@@ -50,16 +56,34 @@ public sealed class RegistryStore(TimeProvider clock, IConfiguration config)
 
     // --- Dispositivos ---
 
-    public void Register(RegisterRequest req)
+    public void Register(RegisterRequest req, string? address = null)
     {
         _devices[req.DeviceId] = new DeviceRecord(
-            req.DeviceId, req.Alias, req.ConnectionPasswordHash, req.PublicKey, clock.GetUtcNow());
+            req.DeviceId, req.Alias, req.ConnectionPasswordHash, req.PublicKey,
+            req.Group ?? "", string.IsNullOrWhiteSpace(req.Kind) ? ClientKind.Remote : req.Kind,
+            address ?? "", clock.GetUtcNow());
     }
 
-    public bool Heartbeat(string deviceId)
+    /// <summary>Reasigna (o limpia, con grupo vacío) el grupo de un dispositivo. Solo gestores.
+    /// Devuelve false si el dispositivo no está registrado.</summary>
+    public bool AssignGroup(string deviceId, string group)
+    {
+        if (!_devices.ContainsKey(deviceId)) return false;
+        _groupOverride[deviceId] = group ?? "";
+        return true;
+    }
+
+    private string EffectiveGroup(DeviceRecord d) =>
+        _groupOverride.TryGetValue(d.DeviceId, out var g) ? g : d.Group;
+
+    public bool Heartbeat(string deviceId, string? address = null)
     {
         if (!_devices.TryGetValue(deviceId, out var d)) return false;
-        _devices[deviceId] = d with { LastSeen = clock.GetUtcNow() };
+        _devices[deviceId] = d with
+        {
+            LastSeen = clock.GetUtcNow(),
+            Address = string.IsNullOrWhiteSpace(address) ? d.Address : address,
+        };
         return true;
     }
 
@@ -71,9 +95,10 @@ public sealed class RegistryStore(TimeProvider clock, IConfiguration config)
             if (d.LastSeen < cutoff)
             {
                 _devices.TryRemove(d.DeviceId, out _);
+                _groupOverride.TryRemove(d.DeviceId, out _);
                 continue;
             }
-            yield return new DeviceInfo(d.DeviceId, d.Alias, true, d.LastSeen);
+            yield return new DeviceInfo(d.DeviceId, d.Alias, true, d.LastSeen, EffectiveGroup(d), d.Kind, d.Address);
         }
     }
 

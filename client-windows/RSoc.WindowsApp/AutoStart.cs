@@ -6,7 +6,11 @@ namespace RSoc.WindowsApp;
 internal static class AutoStart
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "RSoc";
+
+    // Valor por ejecutable (RSoc-RSocGestor / RSoc-RSocRemoto): así gestor y remoto pueden
+    // arrancar ambos con Windows sin pisarse la entrada.
+    private static string ValueName =>
+        "RSoc-" + Path.GetFileNameWithoutExtension(Environment.ProcessPath ?? "RSoc");
 
     public static void Apply(bool enable)
     {

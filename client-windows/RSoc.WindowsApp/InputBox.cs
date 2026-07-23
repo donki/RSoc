@@ -34,4 +34,34 @@ internal static class InputBox
 
         return form.ShowDialog() == DialogResult.OK ? input.Text : null;
     }
+
+    /// <summary>Diálogo modal para introducir texto plano (visible), p.ej. el nombre de un grupo.</summary>
+    public static string? ShowText(string title, string prompt, string defaultValue = "")
+    {
+        using var form = new Form
+        {
+            Text = title,
+            Width = 380,
+            Height = 160,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition = FormStartPosition.CenterParent,
+            MinimizeBox = false,
+            MaximizeBox = false,
+        };
+
+        var label = new Label { Left = 12, Top = 12, Width = 344, Text = prompt };
+        var input = new TextBox { Left = 12, Top = 38, Width = 344, Text = defaultValue };
+        var ok = new Button { Text = "Aceptar", Left = 196, Top = 74, Width = 75, DialogResult = DialogResult.OK };
+        var cancel = new Button { Text = "Cancelar", Left = 281, Top = 74, Width = 75, DialogResult = DialogResult.Cancel };
+
+        form.Controls.Add(label);
+        form.Controls.Add(input);
+        form.Controls.Add(ok);
+        form.Controls.Add(cancel);
+        form.AcceptButton = ok;
+        form.CancelButton = cancel;
+        input.SelectAll();
+
+        return form.ShowDialog() == DialogResult.OK ? input.Text : null;
+    }
 }

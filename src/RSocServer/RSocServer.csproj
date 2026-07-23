@@ -5,7 +5,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="rsoc-server-config.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="rsoc-server-config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <!-- Config editable junto al .exe, nunca embebida en el single-file. -->
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </None>
   </ItemGroup>
 
   <PropertyGroup>

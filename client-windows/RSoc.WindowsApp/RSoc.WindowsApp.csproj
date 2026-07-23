@@ -5,14 +5,20 @@
     <ProjectReference Include="..\..\src\RSoc.Protocol\RSoc.Protocol.csproj" />
   </ItemGroup>
 
-  <!-- Copia el núcleo nativo (DXGI/WIC/input) junto al ejecutable para el P/Invoke. -->
+  <!-- Copia el núcleo nativo (DXGI/WIC/input) junto al ejecutable para el P/Invoke.
+       En publish single-file se embebe en el .exe (self-extract) gracias a
+       IncludeAllContentForSelfExtract; la config JSON se mantiene FUERA (editable). -->
   <ItemGroup>
     <None Include="..\RSocClientCore\bin\RSocClientCore.dll"
           Condition="Exists('..\RSocClientCore\bin\RSocClientCore.dll')">
       <Link>RSocClientCore.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="rsoc-client-conf.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="rsoc-client-conf.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <!-- No empaquetar dentro del single-file: debe quedar suelta junto al .exe. -->
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </None>
   </ItemGroup>
 
   <PropertyGroup>

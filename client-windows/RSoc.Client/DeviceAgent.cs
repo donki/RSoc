@@ -18,6 +18,12 @@ public sealed class DeviceAgent(
     public TimeSpan HeartbeatInterval { get; init; } = TimeSpan.FromSeconds(20);
     public TimeSpan PollInterval { get; init; } = TimeSpan.FromSeconds(2);
 
+    /// <summary>Grupo que este equipo declara al registrarse (el gestor puede reasignarlo).</summary>
+    public string Group { get; init; } = "";
+
+    /// <summary>Tipo de cliente que se anuncia (<c>Manager</c> o <c>Remote</c>).</summary>
+    public string Kind { get; init; } = ClientKind.Remote;
+
     /// <summary>Si se indica, el agente se conecta al relay por esta dirección en vez de la del
     /// ticket (útil cuando el relay del servidor no es alcanzable localmente por NAT).</summary>
     public string? RelayHostOverride { get; init; }
@@ -41,22 +47,27 @@ public sealed class DeviceAgent(
             {
                 if (!registered)
                 {
-                    await api.RegisterAsync(deviceId, alias, connectionPassword, publicKey, ct);
+                    await api.RegisterAsync(deviceId, alias, connectionPassword, publicKey, Group, Kind, ct);
                     registered = true;
                     nextHeartbeat = DateTimeOffset.UtcNow + HeartbeatInterval;
                     ConnectivityChanged?.Invoke(true);
+                    FileLog.Info($"Agente registrado en el servidor (kind={Kind}, grupo='{Group}')");
                 }
 
                 if (DateTimeOffset.UtcNow >= nextHeartbeat)
                 {
                     if (!await api.HeartbeatAsync(deviceId, ct))
+                    {
                         registered = false; // el servidor ya no nos conoce -> re-registrar
+                        FileLog.Warn("Heartbeat rechazado: el servidor no reconoce el dispositivo; se re-registrará");
+                    }
                     nextHeartbeat = DateTimeOffset.UtcNow + HeartbeatInterval;
                 }
 
                 var ticket = await api.GetPendingSessionAsync(deviceId, ct);
                 if (ticket is not null)
                 {
+                    FileLog.Info($"Sesión entrante {ticket.SessionId}: controlado por '{ticket.Peer}' (relay {ticket.RelayHost}:{ticket.RelayPort})");
                     if (!string.IsNullOrWhiteSpace(RelayHostOverride))
                         ticket = ticket with
                         {
@@ -75,9 +86,9 @@ public sealed class DeviceAgent(
             {
                 break;
             }
-            catch
+            catch (Exception ex)
             {
-                if (registered) { registered = false; ConnectivityChanged?.Invoke(false); }
+                if (registered) { registered = false; ConnectivityChanged?.Invoke(false); FileLog.Warn("Conectividad con el servidor perdida", ex); }
             }
 
             try { await Task.Delay(PollInterval, ct); }

@@ -5,7 +5,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string]$ServerBase,  # carpeta del RSocServer publicado (donde corre el exe)
-    [Parameter(Mandatory)] [string]$ClientDir,   # carpeta del cliente Windows publicado
+    [Parameter(Mandatory)] [string]$ClientExe,   # ejecutable single-file del cliente Windows
     [string]$ApkPath                              # APK de Android (opcional)
 )
 
@@ -21,10 +21,15 @@ $updWin = Join-Path $ServerBase "updates\windows"
 $updAnd = Join-Path $ServerBase "updates\android"
 New-Item -ItemType Directory -Force -Path $updWin, $updAnd | Out-Null
 
-# Cliente Windows -> zip (contenido en la raíz del zip).
+# Cliente Windows single-file -> zip con RSocClient.exe en la raíz. El updater lo copia sobre el
+# ejecutable actual (RSocGestor.exe / RSocRemoto.exe), conservando su nombre de rol.
 $zip = Join-Path $updWin "RSocClient.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path (Join-Path $ClientDir '*') -DestinationPath $zip
+$updStage = Join-Path ([System.IO.Path]::GetTempPath()) ("rsoc_upd_" + [System.Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Force -Path $updStage | Out-Null
+Copy-Item $ClientExe (Join-Path $updStage "RSocClient.exe") -Force
+Compress-Archive -Path (Join-Path $updStage '*') -DestinationPath $zip
+Remove-Item $updStage -Recurse -Force
 Set-Content (Join-Path $updWin "version.txt") $version -NoNewline -Encoding ascii
 $winSha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 Write-Host ("  updates\windows: v{0}  {1:N1} MB  sha256 {2}…" -f $version, ((Get-Item $zip).Length/1MB), $winSha.Substring(0,8)) -ForegroundColor Green

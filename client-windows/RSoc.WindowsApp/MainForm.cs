@@ -18,7 +18,7 @@ public sealed class MainForm : ChromeForm
     private readonly Color _offline = Color.FromArgb(150, 156, 168);
     private readonly Color _selected;
 
-    private readonly ClientConfig _cfg = ClientConfig.Load();
+    private readonly ClientConfig _cfg;
     private readonly CancellationTokenSource _cts = new();
     private readonly Label _statusPill;
     private readonly ListBox _list = new();
@@ -30,6 +30,15 @@ public sealed class MainForm : ChromeForm
     private List<DeviceInfo> _devices = [];
     private bool _loggedIn;
     private ClipboardBridge? _clip;
+
+    private const string NoGroup = "Sin grupo";
+    // Filas visibles en la lista: cabeceras de grupo intercaladas con dispositivos.
+    private abstract record Row;
+    private sealed record GroupRow(string Name, int Count) : Row;
+    private sealed record DeviceRow(DeviceInfo Device) : Row;
+    private List<Row> _rows = [];
+    private string? _selectedDeviceId; // se conserva la selección entre refrescos
+    private ContextMenuStrip _deviceMenu = null!;
 
     private sealed record ActiveSession(SessionHost Host, string Peer);
     private readonly List<ActiveSession> _hosts = [];
@@ -43,15 +52,18 @@ public sealed class MainForm : ChromeForm
     private bool _reallyExit;
     private bool _hiddenOnce;
 
-    public MainForm()
+    public MainForm(ClientConfig cfg)
     {
-        TitleText = $"RSoc — {_cfg.Alias}";
+        _cfg = cfg;
+        TitleText = $"RSoc gestor — {_cfg.Alias}";
         Width = 420;
         Height = 560;
         MinimumSize = new Size(360, 420);
         _selected = IsDark ? Color.FromArgb(45, 50, 64) : Color.FromArgb(235, 241, 254);
         _confirmAccess = _cfg.ConfirmAccess;
         _statusPill = AddCaptionStatus();
+        // Botón siempre visible en la barra: Escritorio remoto (RDP) contra el equipo seleccionado.
+        AddCaptionButton("🖥 Escritorio remoto", (_, _) => ConnectRdpSelected());
         SetPill(false);
 
         BuildContent();
@@ -72,7 +84,7 @@ public sealed class MainForm : ChromeForm
         var sectionBar = new Panel { Dock = DockStyle.Top, Height = 40, BackColor = SurfaceBg, Padding = new Padding(18, 12, 18, 0) };
         sectionBar.Controls.Add(new Label
         {
-            Text = "EQUIPOS DISPONIBLES",
+            Text = "EQUIPOS POR GRUPO",
             ForeColor = SubText,
             Font = new Font("Segoe UI Semibold", 8f, FontStyle.Bold),
             Dock = DockStyle.Fill,
@@ -85,10 +97,13 @@ public sealed class MainForm : ChromeForm
         _list.BackColor = CardBg;
         _list.ForeColor = SurfaceText;
         _list.IntegralHeight = false;
-        _list.DrawMode = DrawMode.OwnerDrawFixed;
-        _list.ItemHeight = 56;
-        _list.DrawItem += DrawDeviceItem;
+        _list.DrawMode = DrawMode.OwnerDrawVariable; // cabeceras de grupo + dispositivos, alturas distintas
+        _list.DrawItem += DrawRowItem;
+        _list.MeasureItem += MeasureRowItem;
+        _list.MouseDown += OnListMouseDown;
         listHost.Controls.Add(_list);
+
+        BuildDeviceMenu();
 
         // Panel inferior: control remoto activo + confirmación + enviar fichero.
         var bottom = new Panel { Dock = DockStyle.Bottom, Height = 150, BackColor = SurfaceBg, Padding = new Padding(18, 6, 18, 10) };
@@ -97,7 +112,7 @@ public sealed class MainForm : ChromeForm
         _hint.Height = 22;
         _hint.ForeColor = SubText;
         _hint.TextAlign = ContentAlignment.MiddleLeft;
-        _hint.Text = "Doble clic en un equipo para controlarlo";
+        _hint.Text = "Doble clic: controlar · Clic derecho: RDP y grupos";
 
         _sendFileBtn = new Button
         {
@@ -151,20 +166,36 @@ public sealed class MainForm : ChromeForm
         UpdateSessionsUi();
     }
 
-    private void DrawDeviceItem(object? sender, DrawItemEventArgs e)
+    private void MeasureRowItem(object? sender, MeasureItemEventArgs e)
     {
-        e.DrawBackground();
-        if (e.Index < 0 || e.Index >= _devices.Count) return;
-        var d = _devices[e.Index];
+        e.ItemHeight = (e.Index >= 0 && e.Index < _rows.Count && _rows[e.Index] is GroupRow) ? 30 : 56;
+    }
+
+    private void DrawRowItem(object? sender, DrawItemEventArgs e)
+    {
+        if (e.Index < 0 || e.Index >= _rows.Count) return;
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        var r = e.Bounds;
 
+        if (_rows[e.Index] is GroupRow grp)
+        {
+            using var bg = new SolidBrush(IsDark ? Color.FromArgb(38, 40, 44) : Color.FromArgb(240, 243, 248));
+            g.FillRectangle(bg, r);
+            using var fGrp = new Font("Segoe UI Semibold", 9f, FontStyle.Bold);
+            using var bGrp = new SolidBrush(SubText);
+            g.DrawString($"{grp.Name.ToUpperInvariant()}  ·  {grp.Count}", fGrp, bGrp, r.Left + 14, r.Top + 7);
+            using var pen = new Pen(Divider);
+            g.DrawLine(pen, r.Left + 14, r.Bottom - 1, r.Right - 14, r.Bottom - 1);
+            return;
+        }
+
+        var d = ((DeviceRow)_rows[e.Index]).Device;
         bool selected = (e.State & DrawItemState.Selected) != 0;
         using (var bg = new SolidBrush(selected ? _selected : CardBg))
-            g.FillRectangle(bg, e.Bounds);
+            g.FillRectangle(bg, r);
 
-        var r = e.Bounds;
-        var dot = new Rectangle(r.Left + 16, r.Top + r.Height / 2 - 5, 10, 10);
+        var dot = new Rectangle(r.Left + 22, r.Top + r.Height / 2 - 5, 10, 10);
         using (var db = new SolidBrush(d.Online ? _online : _offline))
             g.FillEllipse(db, dot);
 
@@ -172,15 +203,124 @@ public sealed class MainForm : ChromeForm
         using var fId = new Font("Segoe UI", 8.5f);
         using var bMain = new SolidBrush(SurfaceText);
         using var bDim = new SolidBrush(SubText);
-        g.DrawString(d.Alias, fAlias, bMain, r.Left + 38, r.Top + 9);
-        g.DrawString(d.DeviceId, fId, bDim, r.Left + 38, r.Top + 30);
+        var label = d.Kind == ClientKind.Manager ? $"{d.Alias}  (gestor)" : d.Alias;
+        g.DrawString(label, fAlias, bMain, r.Left + 44, r.Top + 9);
+        g.DrawString(d.DeviceId, fId, bDim, r.Left + 44, r.Top + 30);
 
-        using var pen = new Pen(Divider);
-        g.DrawLine(pen, r.Left + 14, r.Bottom - 1, r.Right - 14, r.Bottom - 1);
+        using var pen2 = new Pen(Divider);
+        g.DrawLine(pen2, r.Left + 14, r.Bottom - 1, r.Right - 14, r.Bottom - 1);
+    }
+
+    private void BuildDeviceMenu()
+    {
+        _deviceMenu = new ContextMenuStrip();
+        _deviceMenu.Items.Add("Conectar (RSoc)", null, async (_, _) => await ConnectSelectedAsync());
+        _deviceMenu.Items.Add("Escritorio remoto (RDP)", null, (_, _) => ConnectRdpSelected());
+        _deviceMenu.Items.Add(new ToolStripSeparator());
+        _deviceMenu.Items.Add("Mover a grupo…", null, async (_, _) => await MoveSelectedToGroupAsync());
+    }
+
+    // Abre el cliente de Escritorio remoto de Windows (mstsc.exe) contra el equipo seleccionado.
+    // La dirección por defecto es el ID (nombre de máquina); el usuario puede corregirla (IP/host).
+    private void ConnectRdpSelected()
+    {
+        var d = SelectedDevice();
+        if (d is null)
+        {
+            MessageBox.Show("Selecciona primero un equipo de la lista.", "RSoc",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        var addr = InputBox.ShowText("Escritorio remoto (RDP)",
+            $"Dirección o nombre del equipo «{d.Alias}»:",
+            string.IsNullOrWhiteSpace(d.Address) ? d.DeviceId : d.Address);
+        if (string.IsNullOrWhiteSpace(addr)) return;
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("mstsc.exe") { UseShellExecute = true };
+            psi.ArgumentList.Add($"/v:{addr.Trim()}");
+            System.Diagnostics.Process.Start(psi);
+            FileLog.Info($"Escritorio remoto (RDP) lanzado contra '{addr.Trim()}' (equipo '{d.Alias}')");
+        }
+        catch (Exception ex)
+        {
+            FileLog.Error($"No se pudo abrir Escritorio remoto contra '{addr.Trim()}'", ex);
+            MessageBox.Show($"No se pudo abrir Escritorio remoto: {ex.Message}", "RSoc",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
+    // Selecciona la fila bajo el cursor; con el botón derecho, sobre un dispositivo, abre el menú.
+    private void OnListMouseDown(object? sender, MouseEventArgs e)
+    {
+        int i = _list.IndexFromPoint(e.Location);
+        if (i < 0 || i >= _rows.Count) return;
+        if (_rows[i] is not DeviceRow) return; // las cabeceras de grupo no se seleccionan
+        _list.SelectedIndex = i;
+        if (e.Button == MouseButtons.Right)
+            _deviceMenu.Show(_list, e.Location);
+    }
+
+    private DeviceInfo? SelectedDevice()
+    {
+        int i = _list.SelectedIndex;
+        return i >= 0 && i < _rows.Count && _rows[i] is DeviceRow dr ? dr.Device : null;
+    }
+
+    // Reconstruye las filas (grupos ordenados alfabéticamente, "Sin grupo" al final; dispositivos
+    // por alias) conservando la selección por DeviceId.
+    private void RebuildRows()
+    {
+        var groups = _devices
+            .GroupBy(d => string.IsNullOrWhiteSpace(d.Group) ? NoGroup : d.Group.Trim())
+            .OrderBy(g => g.Key == NoGroup ? 1 : 0)
+            .ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase);
+
+        var rows = new List<Row>();
+        foreach (var grp in groups)
+        {
+            var devs = grp.OrderBy(d => d.Alias, StringComparer.CurrentCultureIgnoreCase).ToList();
+            rows.Add(new GroupRow(grp.Key, devs.Count));
+            foreach (var d in devs) rows.Add(new DeviceRow(d));
+        }
+        _rows = rows;
+
+        _list.BeginUpdate();
+        _list.Items.Clear();
+        foreach (var _ in _rows) _list.Items.Add(string.Empty);
+        // Restaura la selección sobre el mismo dispositivo si sigue presente.
+        int sel = _selectedDeviceId is null ? -1
+            : _rows.FindIndex(r => r is DeviceRow dr && dr.Device.DeviceId == _selectedDeviceId);
+        _list.SelectedIndex = sel;
+        _list.EndUpdate();
+    }
+
+    private async Task MoveSelectedToGroupAsync()
+    {
+        if (_api is null) return;
+        var d = SelectedDevice();
+        if (d is null) return;
+        var current = string.IsNullOrWhiteSpace(d.Group) ? "" : d.Group;
+        var group = InputBox.ShowText("Mover a grupo",
+            $"Grupo para «{d.Alias}» (vacío = sin grupo):", current);
+        if (group is null) return;
+        try
+        {
+            await _api.AssignGroupAsync(d.DeviceId, group.Trim(), _cts.Token);
+            FileLog.Info($"'{d.Alias}' ({d.DeviceId}) movido al grupo '{group.Trim()}'");
+            await TickAsync(); // refresca ya con el nuevo grupo
+        }
+        catch (Exception ex)
+        {
+            FileLog.Error($"No se pudo mover '{d.Alias}' al grupo '{group.Trim()}'", ex);
+            MessageBox.Show($"No se pudo mover de grupo: {ex.Message}", "RSoc",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     private async Task StartAsync()
     {
+        FileLog.Info("Gestor iniciando: agente + consola de dispositivos");
         AutoStart.Apply(_cfg.AutoStart); // arranque con Windows (activo por defecto)
 
         _http = RSocHttp.Create(_cfg.Server, _cfg.AcceptSelfSignedCerts); // HTTPS
@@ -191,6 +331,8 @@ public sealed class MainForm : ChromeForm
 
         var agent = new DeviceAgent(_api, _cfg.DeviceId, _cfg.Alias, _cfg.ConnectionPassword, "rsoc-pubkey")
         {
+            Group = _cfg.Group,
+            Kind = ClientKind.Manager,
             RelayHostOverride = string.IsNullOrWhiteSpace(_cfg.RelayHost) ? null : _cfg.RelayHost,
             RelayPortOverride = _cfg.RelayPort,
         };
@@ -208,22 +350,18 @@ public sealed class MainForm : ChromeForm
         if (_api is null) return;
         if (!_loggedIn)
         {
-            try { await _api.LoginAsync(_cfg.ApiUser, _cfg.ApiPassword, _cts.Token); _loggedIn = true; }
-            catch { SetPill(false); return; }
+            try { await _api.LoginAsync(_cfg.ApiUser, _cfg.ApiPassword, _cts.Token); _loggedIn = true; FileLog.Info($"Login del API OK (usuario '{_cfg.ApiUser}')"); }
+            catch (Exception ex) { SetPill(false); FileLog.Warn("Login del API falló; se reintentará", ex); return; }
         }
         try
         {
             var all = await _api.ListDevicesAsync(_cts.Token);
             _devices = all.Where(d => d.DeviceId != _cfg.DeviceId).ToList();
-            int sel = _list.SelectedIndex;
-            _list.BeginUpdate();
-            _list.Items.Clear();
-            foreach (var _ in _devices) _list.Items.Add(string.Empty);
-            if (sel >= 0 && sel < _list.Items.Count) _list.SelectedIndex = sel;
-            _list.EndUpdate();
+            _selectedDeviceId = SelectedDevice()?.DeviceId; // recuerda qué había seleccionado
+            RebuildRows();
             SetPill(true);
         }
-        catch { _loggedIn = false; SetPill(false); }
+        catch (Exception ex) { _loggedIn = false; SetPill(false); FileLog.Warn("Fallo al listar dispositivos; se reintentará el login", ex); }
     }
 
     private void SetPill(bool connected)
@@ -237,7 +375,7 @@ public sealed class MainForm : ChromeForm
         if (_confirmAccess)
         {
             bool allow = (bool)Invoke(new Func<bool>(() => AskAllow(ticket.Peer)))!;
-            if (!allow) { relay.Dispose(); return; }
+            if (!allow) { FileLog.Info($"Control entrante DENEGADO por el usuario ('{ticket.Peer}', sesión {ticket.SessionId})"); relay.Dispose(); return; }
         }
 
         var host = new SessionHost();
@@ -246,9 +384,10 @@ public sealed class MainForm : ChromeForm
         var session = new ActiveSession(host, ticket.Peer);
         lock (_hosts) _hosts.Add(session);
         UpdateSessionsUi();
+        FileLog.Info($"Control entrante ACEPTADO de '{ticket.Peer}' (sesión {ticket.SessionId})");
         try { await host.RunAsync(relay.Stream, _cts.Token); }
-        catch { }
-        finally { lock (_hosts) _hosts.Remove(session); UpdateSessionsUi(); relay.Dispose(); }
+        catch (Exception ex) { FileLog.Warn($"Sesión con '{ticket.Peer}' terminó con error", ex); }
+        finally { lock (_hosts) _hosts.Remove(session); UpdateSessionsUi(); relay.Dispose(); FileLog.Info($"Control entrante de '{ticket.Peer}' finalizado (sesión {ticket.SessionId})"); }
     }
 
     private void UpdateSessionsUi()
@@ -316,12 +455,14 @@ public sealed class MainForm : ChromeForm
                 var m = await upd.CheckAsync(ct);
                 if (m is { UpdateAvailable: true } && !string.IsNullOrEmpty(m.Sha256))
                 {
+                    FileLog.Info($"Actualización disponible v{m.LatestVersion}; descargando…");
                     ShowHint($"Actualización disponible (v{m.LatestVersion}). Descargando…");
                     var dir = Path.Combine(Path.GetTempPath(), "rsoc_update");
                     Directory.CreateDirectory(dir);
                     var dest = Path.Combine(dir, m.FileName);
                     if (await upd.DownloadWithRolloutAsync(m, dest, seed, ct: ct))
                     {
+                        FileLog.Info($"Instalando actualización v{m.LatestVersion} y reiniciando");
                         ShowHint($"Instalando actualización v{m.LatestVersion}…");
                         WindowsUpdater.InstallAndRestart(dest);
                         if (IsHandleCreated) BeginInvoke(() => { _reallyExit = true; Close(); });
@@ -330,7 +471,7 @@ public sealed class MainForm : ChromeForm
                 }
             }
             catch (OperationCanceledException) { return; }
-            catch { nextWait = TimeSpan.FromMinutes(30); } // servidor caído u otro fallo: reintenta antes
+            catch (Exception ex) { nextWait = TimeSpan.FromMinutes(30); FileLog.Warn("Fallo en la comprobación/descarga de actualización", ex); } // reintenta antes
 
             try { await Task.Delay(nextWait, ct); } catch { return; }
         }
@@ -445,21 +586,23 @@ public sealed class MainForm : ChromeForm
     private async Task ConnectSelectedAsync()
     {
         if (_api is null) return;
-        int i = _list.SelectedIndex;
-        if (i < 0 || i >= _devices.Count) return;
-        var target = _devices[i];
+        var target = SelectedDevice();
+        if (target is null) return;
 
         var pwd = InputBox.Show($"Password para «{target.Alias}»", "Contraseña de conexión:", _cfg.ConnectionPassword);
         if (pwd is null) return;
 
         try
         {
+            FileLog.Info($"Conectando (RSoc) a '{target.Alias}' ({target.DeviceId})…");
             var ticket = await _api.CreateSessionAsync(_cfg.DeviceId, target.DeviceId, pwd, _cts.Token);
             var relay = await RelayConnection.OpenAsync(ticket, _cts.Token);
             new ViewerForm(relay, target.Alias, _cfg.AcceptSelfSignedCerts).Show();
+            FileLog.Info($"Sesión {ticket.SessionId} abierta con '{target.Alias}' (relay {ticket.RelayHost}:{ticket.RelayPort})");
         }
         catch (Exception ex)
         {
+            FileLog.Error($"No se pudo conectar a '{target.Alias}' ({target.DeviceId})", ex);
             MessageBox.Show($"No se pudo conectar: {ex.Message}", "RSoc", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }

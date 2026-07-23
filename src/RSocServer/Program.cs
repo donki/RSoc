@@ -17,11 +17,12 @@ builder.WebHost.ConfigureKestrel(k =>
     k.ListenAnyIP(apiPort, lo => lo.UseHttps(serverCert)));
 var urls = $"https://0.0.0.0:{apiPort}";
 
-// Logging detallado a fichero rotativo (10 MB x 10 ficheros) en logs\ junto al exe.
+// Logging detallado a fichero en logs\ junto al exe: cada fichero máx. 10 MB y se conservan
+// como mucho 7 días (rotación por tamaño + purga por edad).
 var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
 builder.Logging.AddProvider(new RollingFileLoggerProvider(
-    Path.Combine(logDir, "RSocServer.log"), 10L * 1024 * 1024, 10, LogLevel.Information));
-builder.Logging.SetMinimumLevel(LogLevel.Information);
+    Path.Combine(logDir, "RSocServer.log"), 10L * 1024 * 1024, TimeSpan.FromDays(7), LogLevel.Debug));
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<RegistryStore>();
@@ -59,16 +60,17 @@ app.MapPost("/api/login", (LoginRequest req, RegistryStore store) =>
 
 // --- Dispositivos ---
 
-app.MapPost("/api/devices/register", (RegisterRequest req, RegistryStore store) =>
+app.MapPost("/api/devices/register", (RegisterRequest req, HttpContext http, RegistryStore store) =>
 {
-    store.Register(req);
-    log.LogInformation("Registro de dispositivo {DeviceId} (alias '{Alias}')", req.DeviceId, req.Alias);
+    var addr = ClientIp(http);
+    store.Register(req, addr);
+    log.LogInformation("Registro de dispositivo {DeviceId} (alias '{Alias}', ip {Ip})", req.DeviceId, req.Alias, addr);
     return Results.NoContent();
 });
 
-app.MapPost("/api/devices/{deviceId}/heartbeat", (string deviceId, RegistryStore store) =>
+app.MapPost("/api/devices/{deviceId}/heartbeat", (string deviceId, HttpContext http, RegistryStore store) =>
 {
-    var ok = store.Heartbeat(deviceId);
+    var ok = store.Heartbeat(deviceId, ClientIp(http));
     log.LogDebug("Heartbeat de {DeviceId}: {Resultado}", deviceId, ok ? "OK" : "DESCONOCIDO");
     return ok ? Results.NoContent() : Results.NotFound();
 });
@@ -79,6 +81,16 @@ app.MapGet("/api/devices", (HttpRequest http, RegistryStore store) =>
         var list = store.ListOnline().ToList();
         log.LogInformation("Lista de dispositivos: {Count} online", list.Count);
         return Results.Ok(list);
+    }));
+
+// Reasignación de grupo (solo gestores autenticados).
+app.MapPost("/api/devices/{deviceId}/group", (string deviceId, AssignGroupRequest req, HttpRequest http, RegistryStore store) =>
+    RequireApiToken(http, store, () =>
+    {
+        var ok = store.AssignGroup(deviceId, req.Group);
+        log.LogInformation("Reasignar grupo de {DeviceId} -> '{Group}': {Resultado}",
+            deviceId, req.Group, ok ? "OK" : "DESCONOCIDO");
+        return ok ? Results.NoContent() : Results.NotFound();
     }));
 
 // --- Señalización de sesión ---
@@ -148,6 +160,15 @@ app.MapGet("/api/update/download", async (HttpContext ctx, string? platform, Upd
 app.MapGet("/", () => "RSocServer up");
 
 app.Run();
+
+// IP de origen del cliente, normalizada a IPv4 cuando llega como IPv4-mapeada en IPv6.
+static string? ClientIp(HttpContext http)
+{
+    var ip = http.Connection.RemoteIpAddress;
+    if (ip is null) return null;
+    if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+    return ip.ToString();
+}
 
 static IResult RequireApiToken(HttpRequest http, RegistryStore store, Func<IResult> onAuthorized)
 {

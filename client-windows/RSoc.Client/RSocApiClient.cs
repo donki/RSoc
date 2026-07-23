@@ -15,12 +15,12 @@ public sealed class RSocApiClient(HttpClient http)
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private string? _apiToken;
 
-    /// <summary>Alta/refresco del dispositivo (lado agente).</summary>
+    /// <summary>Alta/refresco del dispositivo (lado agente). Declara su grupo y tipo de cliente.</summary>
     public async Task RegisterAsync(string deviceId, string alias, string connectionPassword,
-        string publicKey, CancellationToken ct = default)
+        string publicKey, string group = "", string kind = ClientKind.Remote, CancellationToken ct = default)
     {
         var req = new RegisterRequest(deviceId, alias,
-            HashPassword(connectionPassword), publicKey);
+            HashPassword(connectionPassword), publicKey, group, kind);
         var resp = await http.PostAsJsonAsync("/api/devices/register", req, Json, ct);
         resp.EnsureSuccessStatusCode();
     }
@@ -46,6 +46,14 @@ public sealed class RSocApiClient(HttpClient http)
     {
         var list = await http.GetFromJsonAsync<List<DeviceInfo>>("/api/devices", Json, ct);
         return list ?? [];
+    }
+
+    /// <summary>Reasigna el grupo de un dispositivo (lado gestor). Requiere login. Grupo vacío = sin grupo.</summary>
+    public async Task AssignGroupAsync(string deviceId, string group, CancellationToken ct = default)
+    {
+        var resp = await http.PostAsJsonAsync($"/api/devices/{deviceId}/group",
+            new AssignGroupRequest(deviceId, group), Json, ct);
+        resp.EnsureSuccessStatusCode();
     }
 
     /// <summary>Abre sesión contra un dispositivo destino (lado controlador). Requiere login.</summary>
