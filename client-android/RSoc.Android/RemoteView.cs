@@ -42,7 +42,7 @@ public sealed class RemoteView : View
         _scaleDet = new ScaleGestureDetector(c, new ScaleListener(this));
         _gestureDet = new GestureDetector(c, new GestureListener(this));
         _slop = ViewConfiguration.Get(c)!.ScaledTouchSlop;
-        SetBackgroundColor(Color.Argb(255, 24, 26, 32));
+        SetBackgroundColor(Color.Argb(255, 20, 19, 24));
     }
 
     public void SetFrame(Bitmap bmp, int w, int h)
@@ -81,7 +81,7 @@ public sealed class RemoteView : View
         using var outline = new Paint { AntiAlias = true, Color = Color.Black };
         outline.SetStyle(Paint.Style.Stroke);
         outline.StrokeWidth = 3 * Density;
-        using var fill = new Paint { AntiAlias = true, Color = _dragging ? Color.Argb(255, 120, 200, 255) : Color.White };
+        using var fill = new Paint { AntiAlias = true, Color = _dragging ? Color.Argb(255, 99, 91, 242) : Color.White };
         fill.SetStyle(Paint.Style.Fill);
         canvas.DrawPath(path, outline);
         canvas.DrawPath(path, fill);

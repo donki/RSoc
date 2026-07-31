@@ -50,7 +50,7 @@ public class ViewerActivity : Activity
             AcceptSelfSigned = Intent?.GetBooleanExtra("acceptSelfSigned", true) ?? true,
         };
         var root = new LinearLayout(this) { Orientation = Orientation.Vertical };
-        root.SetBackgroundColor(Color.Argb(255, 24, 26, 32));
+        root.SetBackgroundColor(Color.Argb(255, 20, 19, 24));
 
         // Barra superior.
         var bar = new LinearLayout(this) { Orientation = Orientation.Horizontal };

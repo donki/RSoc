@@ -14,9 +14,9 @@ public sealed class MainForm : ChromeForm
 {
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    private readonly Color _online = Color.FromArgb(34, 197, 94);
+    private readonly Color _online = Success;
     private readonly Color _offline = Color.FromArgb(150, 156, 168);
-    private readonly Color _selected;
+    private readonly Color _selected = Color.FromArgb(0xE8, 0xE6, 0xFB); // selección índigo claro
 
     private readonly ClientConfig _cfg;
     private readonly CancellationTokenSource _cts = new();
@@ -59,7 +59,6 @@ public sealed class MainForm : ChromeForm
         Width = 420;
         Height = 560;
         MinimumSize = new Size(360, 420);
-        _selected = IsDark ? Color.FromArgb(45, 50, 64) : Color.FromArgb(235, 241, 254);
         _confirmAccess = _cfg.ConfirmAccess;
         _statusPill = AddCaptionStatus();
         // Botón siempre visible en la barra: Escritorio remoto (RDP) contra el equipo seleccionado.
@@ -125,7 +124,8 @@ public sealed class MainForm : ChromeForm
             ForeColor = Color.White,
             Font = new Font("Segoe UI Semibold", 9f),
         };
-        _sendFileBtn.FlatAppearance.BorderSize = 0;
+        _sendFileBtn.FlatAppearance.BorderSize = 1;
+        _sendFileBtn.FlatAppearance.BorderColor = PrimaryDark; // borde sutil del botón primario
         _sendFileBtn.Click += async (_, _) => await SendFileToRemotesAsync();
 
         _confirmCheck = new CheckBox
@@ -180,7 +180,7 @@ public sealed class MainForm : ChromeForm
 
         if (_rows[e.Index] is GroupRow grp)
         {
-            using var bg = new SolidBrush(IsDark ? Color.FromArgb(38, 40, 44) : Color.FromArgb(240, 243, 248));
+            using var bg = new SolidBrush(Color.FromArgb(0xF0, 0xF1, 0xF5));
             g.FillRectangle(bg, r);
             using var fGrp = new Font("Segoe UI Semibold", 9f, FontStyle.Bold);
             using var bGrp = new SolidBrush(SubText);

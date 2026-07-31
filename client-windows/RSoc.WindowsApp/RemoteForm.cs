@@ -14,7 +14,7 @@ public sealed class RemoteForm : ChromeForm
 {
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hWnd);
 
-    private readonly Color _online = Color.FromArgb(34, 197, 94);
+    private readonly Color _online = Success;
 
     private readonly ClientConfig _cfg;
     private readonly CancellationTokenSource _cts = new();

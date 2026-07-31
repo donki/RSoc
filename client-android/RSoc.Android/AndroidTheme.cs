@@ -9,18 +9,19 @@ namespace RSoc.Android;
 
 /// <summary>
 /// Paleta y helpers de UI que respetan el modo claro/oscuro del sistema (DayNight).
-/// Mantiene un acento azul coherente con el cliente Windows.
+/// Mantiene el acento indigo sOCratic coherente con el resto de la familia de apps.
 /// </summary>
 internal static class AndroidTheme
 {
     public static bool IsDark(Context c) =>
         ((UiMode)((int)c.Resources!.Configuration!.UiMode & (int)UiMode.NightMask)) == UiMode.NightYes;
 
-    public static Color Accent(Context c) => IsDark(c) ? Color.Argb(255, 59, 130, 246) : Color.Argb(255, 37, 99, 235);
-    public static Color Bg(Context c) => IsDark(c) ? Color.Argb(255, 18, 19, 22) : Color.Argb(255, 246, 248, 251);
-    public static Color Surface(Context c) => IsDark(c) ? Color.Argb(255, 30, 31, 34) : Color.White;
-    public static Color Text(Context c) => IsDark(c) ? Color.Argb(255, 232, 232, 232) : Color.Argb(255, 28, 31, 38);
-    public static Color SubText(Context c) => IsDark(c) ? Color.Argb(255, 154, 160, 166) : Color.Argb(255, 107, 114, 128);
+    // Paleta sOCratic INDIGO: Primary #3525CD, PrimaryDark #2A1CB8, PrimaryLight #635BF2.
+    public static Color Accent(Context c) => IsDark(c) ? Color.Argb(255, 99, 91, 242) : Color.Argb(255, 53, 37, 205);
+    public static Color Bg(Context c) => IsDark(c) ? Color.Argb(255, 20, 19, 24) : Color.Argb(255, 248, 249, 250);
+    public static Color Surface(Context c) => IsDark(c) ? Color.Argb(255, 32, 31, 39) : Color.White;
+    public static Color Text(Context c) => IsDark(c) ? Color.Argb(255, 230, 225, 233) : Color.Argb(255, 25, 28, 29);
+    public static Color SubText(Context c) => IsDark(c) ? Color.Argb(255, 199, 196, 216) : Color.Argb(255, 70, 69, 85);
     public static Color Divider(Context c) => IsDark(c) ? Color.Argb(255, 44, 46, 51) : Color.Argb(255, 230, 232, 236);
 
     public static int Dp(Context c, float dp) => (int)(dp * c.Resources!.DisplayMetrics!.Density + 0.5f);
